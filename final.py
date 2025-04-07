@@ -6,7 +6,7 @@ import json
 # poverty census link: https://www.census.gov/data/developers/data-sets/Poverty-Statistics.html
 # health insurance link: https://www.census.gov/data/developers/data-sets/Health-Insurance-Statistics.html
 
-API_KEY = "fc91d6eb0800a5c0ce59040f6df63647f2929dde"
+API_KEY = "2ccfec65f3d7e712756b848688b689eacd4e0282"
 ##Covid DB------------------------------------------##
 
 def get_covid_data():
@@ -71,22 +71,29 @@ load_data_and_insert_into_db()#puts data into db
 
 ##Poverty DB----------------------------------------##
 
-def get_poverty_data():   
+def get_poverty_data():
+    url = "https://api.census.gov/data/2022/acs/acs1"
+    params = {
+        "get": "NAME,B17001_002E,B17001_001E",
+        "for": "state:*",
+        "key": API_KEY
+    }
     try:
-        response = requests.get("https://api.census.gov/data/2023/cps/asec/mar/variables.json", params = {'apikey': API_KEY})
-       
-        
-        if response.status_code == 200: 
-            thedata = response.json()
-
-            with open("poverty_data.json", "w") as json_file:
-                    json.dump(thedata, json_file, indent=4)
-
-            return (thedata, response.url)
-        else:   
-            return None 
-    
-    except requests.RequestException:
+        response = requests.get(url, params=params)
+        print("Status Code:", response.status_code)
+        print("Response Text:", response.text[:300])  # just print part
+        if response.status_code == 200:
+            data = response.json()
+            with open("poverty_data.json", "w") as f:
+                json.dump(data, f, indent=4)
+                print("done")
+                print("File saved to:", os.path.abspath("poverty_data.json"))
+            return data
+        else:
+            print("Error:", response.status_code)
+            return None
+    except requests.RequestException as e:
+        print("Request exception:", e)
         return None
     
 get_poverty_data()
