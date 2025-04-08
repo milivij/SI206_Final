@@ -72,30 +72,36 @@ load_data_and_insert_into_db()#puts data into db
 ##Poverty DB----------------------------------------##
 
 def get_poverty_data():
-    url = "https://api.census.gov/data/2022/acs/acs1"
+    url = "https://api.census.gov/data/2021/acs/acs1"
     params = {
-        "get": "NAME,B17001_002E,B17001_001E",
+        "get": "NAME,B17001_002E,B17001_001E,B19013_001E,B15003_001E,B15003_017E,B15003_022E",
         "for": "state:*",
         "key": API_KEY
     }
     try:
         response = requests.get(url, params=params)
-        print("Status Code:", response.status_code)
-        print("Response Text:", response.text[:300])  # just print part
-        if response.status_code == 200:
-            data = response.json()
-            with open("poverty_data.json", "w") as f:
-                json.dump(data, f, indent=4)
-                print("done")
-                print("File saved to:", os.path.abspath("poverty_data.json"))
-            return data
-        else:
-            print("Error:", response.status_code)
-            return None
+        
+        data = response.json()
+        with open("poverty_data.json", "w") as f:
+            json.dump(data, f, indent=4)
+            print("done")
+            
+        return data
+        
     except requests.RequestException as e:
         print("Request exception:", e)
         return None
     
+
+    
 get_poverty_data()
 
 
+# NAME
+# B17001_002E: People BELOW poverty
+# B17001_001E: Total people in poverty universe
+# B19013_001E: Median household income
+# B15003_001E: Total population age 25+
+# B15003_017E: High school grads (including equivalency)
+# B15003_022E: Bachelor's degree holders
+# for=state:06 (California's FIPS code)
