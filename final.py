@@ -60,7 +60,7 @@ def create_covid_table(data, cur, conn):
 
 
 def load_data_and_insert_into_db():
-    data, _ = get_covid_data()
+    data = get_covid_data()
     if data:
         cur, conn = set_up_covid_database("covid_db.db")
         create_covid_table(data, cur, conn)
@@ -96,6 +96,70 @@ def get_poverty_data():
     
 get_poverty_data()
 
+def setuppovertydatabase(db_name): #same as covid one. 
+    path = os.path.dirname(os.path.abspath(__file__))
+    conn = sqlite3.connect(os.path.join(path, db_name))
+    cur = conn.cursor()
+    return cur, conn
+
+
+setuppovertydatabase("poverty_db.db")
+
+
+def createpovertytable(cur, conn):
+    #split, easier with no dictionary.
+    # creates the table.  
+    #change column names at some point(remeber). 
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS poverty_data (
+            state_name TEXT,
+            B17001_002E INTEGER, 
+            B17001_001E INTEGER,
+            B19013_001E INTEGER,
+            B15003_001E INTEGER,
+            B15003_017E INTEGER,
+            B15003_022E INTEGER,
+            state_code TEXT
+        )
+    ''')
+    conn.commit()
+
+cur, conn = setuppovertydatabase("poverty_db.db")
+createpovertytable(cur, conn)
+
+def loadpovertydata():
+    #load the data from the json file.
+    with open("poverty_data.json", "r") as file:
+        data = json.load(file)
+       
+    for row in data[1:]: #to skip the first one. 
+        cur.execute('''
+                INSERT INTO poverty_data (
+                    state_name, 
+                    B17001_002E,
+                    B17001_001E,
+                    B19013_001E,
+                    B15003_001E,
+                    B15003_017E,
+                    B15003_022E,
+                    state_code
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', ( 
+                row[0], 
+                row[1], 
+                row[2], 
+                row[3],
+                row[4], 
+                row[5], 
+                row[6], 
+                row[7]
+            ))
+        
+    conn.commit()
+    conn.close()
+
+loadpovertydata()
 
 # NAME
 # B17001_002E: People BELOW poverty
