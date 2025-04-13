@@ -12,16 +12,13 @@ API_KEY = "2ccfec65f3d7e712756b848688b689eacd4e0282"
 ##Covid DB------------------------------------------##
 
 def get_covid_data():
-    covid_url = "https://disease.sh/v3/covid-19/states"
     try:
-        response = requests.get(covid_url)
-        
-        data = response.json()
-        with open("covid_data.json", "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        return data, response.url
-        
-    except:
+        with open("covid_data.json", "r") as json_file:
+            data = json.load(json_file)
+            print("Loaded COVID data from local file.")
+            return data, None
+    except Exception as e:
+        print("Failed to load local COVID data:", e)
         return None
 
 
@@ -32,10 +29,6 @@ def set_up_covid_database(db_name):
     cur = conn.cursor()
     return cur, conn
 
-
-get_covid_data()#creates json file
-
-set_up_covid_database("covid_db.db")
 
 def create_covid_table(data, cur, conn):
 
@@ -61,15 +54,14 @@ def create_covid_table(data, cur, conn):
     conn.commit()
 
 
-def load_data_and_insert_into_db():
-    data = get_covid_data()
-    if data:
-        cur, conn = set_up_covid_database("covid_db.db")
-        create_covid_table(data, cur, conn)
-        conn.close()
-        #print("It worked") #debugging
+# def load_data_and_insert_into_db():
+#     data = get_covid_data()
+#     if data:
+#         cur, conn = set_up_covid_database("covid_db.db")
+#         create_covid_table(data, cur, conn)
+#         conn.close()
+#         #print("It worked") #debugging
 
-load_data_and_insert_into_db()#puts data into db
 
 ##Poverty DB----------------------------------------##
 
@@ -96,16 +88,13 @@ def get_poverty_data():
     
 
     
-get_poverty_data()
 
-def setuppovertydatabase(db_name): #same as covid one. 
-    path = os.path.dirname(os.path.abspath(__file__))
-    conn = sqlite3.connect(os.path.join(path, db_name))
-    cur = conn.cursor()
-    return cur, conn
+# def setuppovertydatabase(db_name): #same as covid one. 
+#     path = os.path.dirname(os.path.abspath(__file__))
+#     conn = sqlite3.connect(os.path.join(path, db_name))
+#     cur = conn.cursor()
+#     return cur, conn
 
-
-setuppovertydatabase("poverty_db.db")
 
 
 def createpovertytable(cur, conn):
@@ -126,10 +115,8 @@ def createpovertytable(cur, conn):
     ''')
     conn.commit()
 
-cur, conn = setuppovertydatabase("poverty_db.db")
-createpovertytable(cur, conn)
 
-def loadpovertydata():
+def loadpovertydata_to_covid_db(cur, conn):
     #load the data from the json file.
     with open("poverty_data.json", "r") as file:
         data = json.load(file)
@@ -159,10 +146,9 @@ def loadpovertydata():
             ))
         
     conn.commit()
-    conn.close()
 
-loadpovertydata()
 
+# state election results -----------------------------------------
 def get_state_election_results():
    url = "https://en.wikipedia.org/wiki/2020_United_States_presidential_election"
    response = requests.get(url)
@@ -217,7 +203,6 @@ state_party = get_state_election_results()
 
 cur, conn = setup_party_database("covid_db.db")
 insert_state_parties(state_party, cur, conn)
-conn.close()
 print("Election data successfully added to the database.")
 
 
@@ -230,3 +215,29 @@ print("Election data successfully added to the database.")
 # B15003_017E: High school grads (including equivalency)
 # B15003_022E: Bachelor's degree holders
 # for=state:06 (California's FIPS code)
+
+def main():
+    # Set up database connection
+    cur, conn = set_up_covid_database("covid_db.db")
+
+    # Step 1: COVID Data
+    covid_data, _ = get_covid_data()
+    create_covid_table(covid_data, cur, conn)
+    
+
+    # Step 2: Poverty Data
+    poverty_data = get_poverty_data()
+    createpovertytable(cur, conn)
+    loadpovertydata_to_covid_db(cur, conn)
+
+    #Step 3: Election Data
+    #Scraping election data from Wikipedia
+    state_party = get_state_election_results()
+    #Creating state_parties table and inserting data
+    insert_state_parties(state_party, cur, conn)
+
+    # Step 4: Done
+    conn.close()
+    print("All data successfully loaded into covid_db.db.")
+if __name__ == "__main__":
+    main()
