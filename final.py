@@ -2,6 +2,8 @@ import requests
 import sqlite3
 import os
 import json
+from bs4 import BeautifulSoup
+import re
 
 # poverty census link: https://www.census.gov/data/developers/data-sets/Poverty-Statistics.html
 # health insurance link: https://www.census.gov/data/developers/data-sets/Health-Insurance-Statistics.html
@@ -160,6 +162,65 @@ def loadpovertydata():
     conn.close()
 
 loadpovertydata()
+
+def get_state_election_results():
+   url = "https://en.wikipedia.org/wiki/2020_United_States_presidential_election"
+   response = requests.get(url)
+   soup = BeautifulSoup(response.content, "html.parser")
+
+
+   # Find the main results table (it's the one with the classes below)
+   state_party = {}
+   target_div = soup.find_all("div", attrs={"style": "overflow:auto"})
+   tbody = target_div[0].find("tbody")
+   state_color = tbody
+   election_list_r = tbody.find_all("tr", style = "background-color:#FFB6B6")
+   election_list_d = tbody.find_all("tr", style = "color:black;background-color:#B0CEFF")
+   for row in election_list_r + election_list_d:
+    cells = row.find_all("td")
+    if len(cells) > 0:
+        state = re.sub(r"\[.*?\]|\W+$", "", cells[0].get_text(strip=True))
+        biden_votes = int(cells[1].get_text(strip=True).replace(",", ""))
+        trump_votes = int(cells[4].get_text(strip=True).replace(",", ""))
+        
+        if biden_votes > trump_votes:
+            state_party[state] = "Democratic"
+        elif trump_votes > biden_votes:
+            state_party[state] = "Republican"
+        else:
+            state_party[state] = "Neither"
+
+   return state_party
+
+def setup_party_database(db_name):
+    path = os.path.dirname(os.path.abspath(__file__))
+    conn = sqlite3.connect(os.path.join(path, db_name))
+    cur = conn.cursor()
+    
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS state_parties (
+            state TEXT PRIMARY KEY,
+            party TEXT
+        )
+    ''')
+    
+    return cur, conn
+def insert_state_parties(state_party, cur, conn):
+    for state, party in state_party.items():
+        cur.execute('''
+            INSERT OR REPLACE INTO state_parties (state, party)
+            VALUES (?, ?)
+        ''', (state, party))
+    conn.commit()
+
+state_party = get_state_election_results()
+
+cur, conn = setup_party_database("covid_db.db")
+insert_state_parties(state_party, cur, conn)
+conn.close()
+print("Election data successfully added to the database.")
+
+
 
 # NAME
 # B17001_002E: People BELOW poverty
