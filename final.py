@@ -16,54 +16,10 @@ def get_covid_data():
         with open("covid_data.json", "r") as json_file:
             data = json.load(json_file)
             print("Loaded COVID data from local file.")
-            return data, None
+            return data
     except Exception as e:
         print("Failed to load local COVID data:", e)
         return None
-
-
-
-def set_up_covid_database(db_name):
-    path = os.path.dirname(os.path.abspath(__file__))
-    conn = sqlite3.connect(os.path.join(path, db_name))
-    cur = conn.cursor()
-    return cur, conn
-
-
-def create_covid_table(data, cur, conn):
-
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS covid_data (
-            state TEXT,
-            cases INTEGER,
-            deaths INTEGER,
-            population INTEGER,
-            tests INTEGER
-        )
-    ''')
-    for state in data:
-        state_name = state['state']
-        cases = state['cases']
-        deaths = state['deaths']
-        population = state['population']
-        tests = state['tests']
-        cur.execute('''
-            INSERT INTO covid_data (state, cases, deaths, population, tests)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (state_name, cases, deaths, population, tests))
-    conn.commit()
-
-
-# def load_data_and_insert_into_db():
-#     data = get_covid_data()
-#     if data:
-#         cur, conn = set_up_covid_database("covid_db.db")
-#         create_covid_table(data, cur, conn)
-#         conn.close()
-#         #print("It worked") #debugging
-
-
-##Poverty DB----------------------------------------##
 
 def get_poverty_data():
     url = "https://api.census.gov/data/2021/acs/acs1"
@@ -86,69 +42,6 @@ def get_poverty_data():
         print("Request exception:", e)
         return None
     
-
-    
-
-# def setuppovertydatabase(db_name): #same as covid one. 
-#     path = os.path.dirname(os.path.abspath(__file__))
-#     conn = sqlite3.connect(os.path.join(path, db_name))
-#     cur = conn.cursor()
-#     return cur, conn
-
-
-
-def createpovertytable(cur, conn):
-    #split, easier with no dictionary.
-    # creates the table.  
-    #change column names at some point(remeber). 
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS poverty_data (
-            state_name TEXT,
-            B17001_002E INTEGER, 
-            B17001_001E INTEGER,
-            B19013_001E INTEGER,
-            B15003_001E INTEGER,
-            B15003_017E INTEGER,
-            B15003_022E INTEGER,
-            state_code TEXT
-        )
-    ''')
-    conn.commit()
-
-
-def loadpovertydata_to_covid_db(cur, conn):
-    #load the data from the json file.
-    with open("poverty_data.json", "r") as file:
-        data = json.load(file)
-       
-    for row in data[1:]: #to skip the first one. 
-        cur.execute('''
-                INSERT INTO poverty_data (
-                    state_name, 
-                    B17001_002E,
-                    B17001_001E,
-                    B19013_001E,
-                    B15003_001E,
-                    B15003_017E,
-                    B15003_022E,
-                    state_code
-                ) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ( 
-                row[0], 
-                row[1], 
-                row[2], 
-                row[3],
-                row[4], 
-                row[5], 
-                row[6], 
-                row[7]
-            ))
-        
-    conn.commit()
-
-
-# state election results -----------------------------------------
 def get_state_election_results():
    url = "https://en.wikipedia.org/wiki/2020_United_States_presidential_election"
    response = requests.get(url)
@@ -178,32 +71,66 @@ def get_state_election_results():
 
    return state_party
 
-def setup_party_database(db_name):
+def convert_poverty_to_dict():
+    with open("poverty_data.json", "r") as file:
+        data = json.load(file)[1:]
+        result = {}
+        for row in data:
+            state = row[0]
+            result[state] = {
+                'poverty_population': int(row[1]),
+                'poverty_universe': int(row[2]),
+                'median_income': int(row[3]),
+                'total_25plus': int(row[4]),
+                'hs_grads': int(row[5]),
+                'bachelors': int(row[6])
+            }
+        return result
+    
+def set_up_covid_database(db_name):
     path = os.path.dirname(os.path.abspath(__file__))
     conn = sqlite3.connect(os.path.join(path, db_name))
     cur = conn.cursor()
+    return cur, conn
+
     
+def create_combined_table(cur, conn):
     cur.execute('''
-        CREATE TABLE IF NOT EXISTS state_parties (
+        CREATE TABLE IF NOT EXISTS state_data (
             state TEXT PRIMARY KEY,
+            cases INTEGER,
+            deaths INTEGER,
+            population INTEGER,
+            tests INTEGER,
+            poverty_population INTEGER,
+            poverty_universe INTEGER,
+            median_income INTEGER,
+            total_25plus INTEGER,
+            hs_grads INTEGER,
+            bachelors INTEGER,
             party TEXT
         )
     ''')
-    
-    return cur, conn
-def insert_state_parties(state_party, cur, conn):
-    for state, party in state_party.items():
-        cur.execute('''
-            INSERT OR REPLACE INTO state_parties (state, party)
-            VALUES (?, ?)
-        ''', (state, party))
     conn.commit()
 
-state_party = get_state_election_results()
-
-cur, conn = setup_party_database("covid_db.db")
-insert_state_parties(state_party, cur, conn)
-print("Election data successfully added to the database.")
+def insert_combined_data(covid_data, poverty_dict, election_dict, cur, conn):
+    for entry in covid_data:
+        state = entry['state']
+        poverty = poverty_dict.get(state)
+        party = election_dict.get(state)
+        if poverty and party:
+            cur.execute('''
+                INSERT OR REPLACE INTO state_data (
+                    state, cases, deaths, population, tests,
+                    poverty_population, poverty_universe, median_income,
+                    total_25plus, hs_grads, bachelors, party
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                state, entry['cases'], entry['deaths'], entry['population'], entry['tests'],
+                poverty['poverty_population'], poverty['poverty_universe'], poverty['median_income'],
+                poverty['total_25plus'], poverty['hs_grads'], poverty['bachelors'], party
+            ))
+    conn.commit()
 
 
 
@@ -217,27 +144,17 @@ print("Election data successfully added to the database.")
 # for=state:06 (California's FIPS code)
 
 def main():
-    # Set up database connection
+    covid_data = get_covid_data()
+    get_poverty_data()
+    poverty_dict = convert_poverty_to_dict()
+    election_dict = get_state_election_results()
     cur, conn = set_up_covid_database("covid_db.db")
-
-    # Step 1: COVID Data
-    covid_data, _ = get_covid_data()
-    create_covid_table(covid_data, cur, conn)
-    
-
-    # Step 2: Poverty Data
-    poverty_data = get_poverty_data()
-    createpovertytable(cur, conn)
-    loadpovertydata_to_covid_db(cur, conn)
-
-    #Step 3: Election Data
-    #Scraping election data from Wikipedia
-    state_party = get_state_election_results()
-    #Creating state_parties table and inserting data
-    insert_state_parties(state_party, cur, conn)
-
-    # Step 4: Done
+    create_combined_table(cur, conn)
+    if covid_data:
+        insert_combined_data(covid_data, poverty_dict, election_dict, cur, conn)
+        print("All data successfully added to combined table.")
+    else:
+        print("Failed to load COVID data.")
     conn.close()
-    print("All data successfully loaded into covid_db.db.")
 if __name__ == "__main__":
     main()
