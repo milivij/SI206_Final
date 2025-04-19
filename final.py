@@ -4,6 +4,8 @@ import os
 import json
 from bs4 import BeautifulSoup
 import re
+import matplotlib.pyplot as plt
+
 
 # poverty census link: https://www.census.gov/data/developers/data-sets/Poverty-Statistics.html
 # health insurance link: https://www.census.gov/data/developers/data-sets/Health-Insurance-Statistics.html
@@ -210,6 +212,174 @@ def insert_split_poverty_data(cur, conn):
 
     conn.commit()
 
+def get_joined_data(cur):
+    query = '''
+        SELECT 
+            s.state_name, 
+            d.cases, 
+            d.deaths, 
+            p.median_income,
+            pr.party_name
+        FROM state_data d
+        JOIN states s ON d.state = s.state_name
+        JOIN poverty_stats p ON s.state_code = p.state_code
+        JOIN parties pr ON d.party_id = pr.party_id
+    '''
+    cur.execute(query)
+    return cur.fetchall()
+
+def write_results_to_file(joined_data):
+    total_cases = 0
+    total_states = 0
+    with open("results.txt", "w") as f:
+        for row in joined_data:
+            state, cases, deaths, income, party = row
+            f.write(f"{state}: {cases} cases, {deaths} deaths, ${income} median income, {party}\n")
+            total_cases += cases
+            total_states += 1
+
+        if total_states > 0:
+            avg = total_cases / total_states
+            f.write(f"\n\nAverage COVID cases across states: {avg:.2f}")
+
+
+def plot_death_rate_by_party(db_path="covid_db.db"):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT parties.party_name, SUM(state_data.deaths), SUM(state_data.population)
+        FROM state_data
+        JOIN parties ON state_data.party_id = parties.party_id
+        GROUP BY parties.party_name
+    ''')
+    data = cur.fetchall()
+    conn.close()
+
+    parties = []
+    death_rates = []
+
+    for row in data:
+        party = row[0]
+        total_deaths = row[1]
+        total_population = row[2]
+        death_rate = (total_deaths / total_population) * 100000  # per 100k
+
+        parties.append(party)
+        death_rates.append(death_rate)
+
+    plt.figure(figsize=(8, 6))
+    plt.bar(parties, death_rates)
+    plt.title("COVID Death Rate by Party (per 100k)")
+    plt.xlabel("Political Party")
+    plt.ylabel("Deaths per 100,000 People")
+    plt.tight_layout()
+    plt.savefig("covid_death_rate_by_party.png")
+    plt.show()
+    plt.close()
+
+
+
+def plot_avg_case_rate_by_party(db_path="covid_db.db"):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT parties.party_name, state_data.cases, state_data.population
+        FROM state_data
+        JOIN parties ON state_data.party_id = parties.party_id
+    ''')
+    data = cur.fetchall()
+    conn.close()
+
+    party_totals = {}
+    for party, cases, pop in data:
+        if party not in party_totals:
+            party_totals[party] = {"cases": 0, "pop": 0}
+        party_totals[party]["cases"] += cases
+        party_totals[party]["pop"] += pop
+
+    parties = []
+    case_rates = []
+    for party, values in party_totals.items():
+        rate = (values["cases"] / values["pop"]) * 100000
+        parties.append(party)
+        case_rates.append(rate)
+
+    plt.figure(figsize=(8, 6))
+    plt.bar(parties, case_rates)
+    plt.title("Average COVID Case Rate by Party (per 100k)")
+    plt.xlabel("Political Party")
+    plt.ylabel("Cases per 100,000 People")
+    plt.tight_layout()
+    plt.savefig("avg_case_rate_by_party.png")
+    plt.show()
+    plt.close()
+
+
+
+def plot_income_vs_case_rate(cur):
+    query = '''
+        SELECT ps.median_income, sd.cases, sd.population
+        FROM state_data sd
+        JOIN states s ON sd.state = s.state_name
+        JOIN poverty_stats ps ON s.state_code = ps.state_code
+    '''
+    cur.execute(query)
+    data = cur.fetchall()
+
+    incomes = []
+    case_rates = []
+    for row in data:
+        income, cases, pop = row
+        if pop > 0:
+            incomes.append(income)
+            case_rates.append((cases / pop) * 100000)
+
+    plt.scatter(incomes, case_rates)
+    plt.title("Median Income vs. COVID Case Rate (per 100k)")
+    plt.xlabel("Median Income ($)")
+    plt.ylabel("COVID Cases per 100,000 People")
+    plt.tight_layout()
+    plt.savefig("income_vs_case_rate.png")
+    plt.show()
+    plt.close()
+
+def plot_education_vs_case_rate(cur):
+    query = '''
+        SELECT 
+            ps.bachelors * 1.0 / ps.total_25plus AS bachelors_rate,
+            sd.cases * 100000.0 / sd.population AS case_rate
+        FROM state_data sd
+        JOIN states s ON sd.state = s.state_name
+        JOIN poverty_stats ps ON s.state_code = ps.state_code
+        WHERE ps.total_25plus > 0 AND sd.population > 0
+    '''
+    cur.execute(query)
+    data = cur.fetchall()
+
+    bachelors_percent = []
+    case_rate = []
+
+    for row in data:
+        bachelors_rate = row[0] * 100  # Convert to percentage
+        covid_case_rate = row[1]       # Already per 100k
+
+        bachelors_percent.append(bachelors_rate)
+        case_rate.append(covid_case_rate)
+
+    plt.figure(figsize=(9, 6))
+    plt.scatter(bachelors_percent, case_rate, alpha=0.7)
+    plt.title("% Bachelor's Degree vs. COVID Case Rate")
+    plt.xlabel("% of Adults with Bachelor's Degree")
+    plt.ylabel("COVID Cases per 100,000")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("education_vs_case_rate.png")
+    plt.show()
+    plt.close()
+
+
+
+
 
 
 
@@ -240,6 +410,16 @@ def main():
         print("All data successfully added to combined table.")
     else:
         print("Failed to load COVID data.")
+
+    joined_data = get_joined_data(cur)
+    write_results_to_file(joined_data)
+    plot_death_rate_by_party()
+    plot_avg_case_rate_by_party()
+    plot_income_vs_case_rate(cur)
+    plot_education_vs_case_rate(cur)
+    
+    
+    
     conn.close()
 if __name__ == "__main__":
     main()
