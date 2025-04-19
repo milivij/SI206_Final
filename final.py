@@ -17,8 +17,8 @@ def get_covid_data():
             data = json.load(json_file)
             print("Loaded COVID data from local file.")
             return data
-    except Exception as e:
-        print("Failed to load local COVID data:", e)
+    except:
+        print("FAILED")
         return None
 
 def get_poverty_data():
@@ -28,27 +28,23 @@ def get_poverty_data():
         "for": "state:*",
         "key": API_KEY
     }
-    try:
-        response = requests.get(url, params=params)
+    
+    response = requests.get(url, params=params)
+    
+    data = response.json()
+    with open("poverty_data.json", "w") as f:
+        json.dump(data, f, indent=4)
+        print("done")
         
-        data = response.json()
-        with open("poverty_data.json", "w") as f:
-            json.dump(data, f, indent=4)
-            print("done")
-            
-        return data
+    return data
         
-    except requests.RequestException as e:
-        print("Request exception:", e)
-        return None
+    
     
 def get_state_election_results():
    url = "https://en.wikipedia.org/wiki/2020_United_States_presidential_election"
    response = requests.get(url)
    soup = BeautifulSoup(response.content, "html.parser")
 
-
-   # Find the main results table (it's the one with the classes below)
    state_party = {}
    target_div = soup.find_all("div", attrs={"style": "overflow:auto"})
    tbody = target_div[0].find("tbody")
@@ -102,35 +98,121 @@ def create_combined_table(cur, conn):
             deaths INTEGER,
             population INTEGER,
             tests INTEGER,
+            party_id INTEGER,
+            FOREIGN KEY (party_id) REFERENCES parties(party_id)
+        )
+    ''')
+    conn.commit()
+
+def create_parties_table(cur, conn):
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS parties (
+            party_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            party_name TEXT UNIQUE
+        )
+    ''')
+    conn.commit()
+
+def get_or_create_party_id(party_name, cur):
+    cur.execute("SELECT party_id FROM parties WHERE party_name = ?", (party_name,))
+    result = cur.fetchone()
+    if result:
+        return result[0]
+    else:
+        cur.execute("INSERT INTO parties (party_name) VALUES (?)", (party_name,))
+        return cur.lastrowid
+
+
+
+
+def insert_combined_data(covid_data, election_dict, cur, conn):
+    cur.execute("SELECT state FROM state_data")
+    inserted_states = set(row[0] for row in cur.fetchall())
+
+    inserted_count = 0
+    for entry in covid_data:
+        if inserted_count >= 25:
+            break
+
+        state = entry['state'].strip()
+        party_name = election_dict.get(state)
+
+        if party_name and state not in inserted_states:
+            party_id = get_or_create_party_id(party_name, cur)
+            cur.execute('''
+                INSERT OR IGNORE INTO state_data (
+                    state, cases, deaths, population, tests, party_id
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                state, entry['cases'], entry['deaths'], entry['population'], entry['tests'], party_id
+            ))
+            inserted_count += 1
+
+    conn.commit()
+
+
+def create_split_tables(cur, conn):
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS states (
+            state_code INTEGER PRIMARY KEY,
+            state_name TEXT
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS poverty_stats (
+            state_code INTEGER PRIMARY KEY,
             poverty_population INTEGER,
             poverty_universe INTEGER,
             median_income INTEGER,
             total_25plus INTEGER,
             hs_grads INTEGER,
             bachelors INTEGER,
-            party TEXT
+            FOREIGN KEY (state_code) REFERENCES states(state_code)
         )
     ''')
+
     conn.commit()
 
-def insert_combined_data(covid_data, poverty_dict, election_dict, cur, conn):
-    for entry in covid_data:
-        state = entry['state']
-        poverty = poverty_dict.get(state)
-        party = election_dict.get(state)
-        if poverty and party:
-            cur.execute('''
-                INSERT OR REPLACE INTO state_data (
-                    state, cases, deaths, population, tests,
-                    poverty_population, poverty_universe, median_income,
-                    total_25plus, hs_grads, bachelors, party
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                state, entry['cases'], entry['deaths'], entry['population'], entry['tests'],
-                poverty['poverty_population'], poverty['poverty_universe'], poverty['median_income'],
-                poverty['total_25plus'], poverty['hs_grads'], poverty['bachelors'], party
-            ))
+def insert_split_poverty_data(cur, conn):
+    with open("poverty_data.json", "r") as file:
+        data = json.load(file)
+
+    for row in data[1:]:  # Skip header
+        state_name = row[0]
+        try:
+            state_code = int(row[7])  # FIPS code
+            poverty_population = int(row[1])
+            poverty_universe = int(row[2])
+            median_income = int(row[3])
+            total_25plus = int(row[4])
+            hs_grads = int(row[5])
+            bachelors = int(row[6])
+        except ValueError:
+            continue  # Skip rows with invalid data
+
+        # Insert into `states` table
+        cur.execute('''
+            INSERT OR IGNORE INTO states (state_code, state_name)
+            VALUES (?, ?)
+        ''', (state_code, state_name))
+
+        # Insert into `poverty_stats` table
+        cur.execute('''
+            INSERT OR REPLACE INTO poverty_stats (
+                state_code, poverty_population, poverty_universe, median_income,
+                total_25plus, hs_grads, bachelors
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            state_code, poverty_population, poverty_universe,
+            median_income, total_25plus, hs_grads, bachelors
+        ))
+
     conn.commit()
+
+
+
+
 
 
 
@@ -149,9 +231,12 @@ def main():
     poverty_dict = convert_poverty_to_dict()
     election_dict = get_state_election_results()
     cur, conn = set_up_covid_database("covid_db.db")
+    create_parties_table(cur, conn) 
     create_combined_table(cur, conn)
+    create_split_tables(cur, conn)
+    insert_split_poverty_data(cur, conn)
     if covid_data:
-        insert_combined_data(covid_data, poverty_dict, election_dict, cur, conn)
+        insert_combined_data(covid_data, election_dict, cur, conn)
         print("All data successfully added to combined table.")
     else:
         print("Failed to load COVID data.")
