@@ -180,10 +180,10 @@ def insert_split_poverty_data(cur, conn):
     with open("poverty_data.json", "r") as file:
         data = json.load(file)
 
-    for row in data[1:]:  # Skip header
+    for row in data[1:]:  
         state_name = row[0]
         try:
-            state_code = int(row[7])  # FIPS code
+            state_code = int(row[7])  
             poverty_population = int(row[1])
             poverty_universe = int(row[2])
             median_income = int(row[3])
@@ -191,15 +191,15 @@ def insert_split_poverty_data(cur, conn):
             hs_grads = int(row[5])
             bachelors = int(row[6])
         except ValueError:
-            continue  # Skip rows with invalid data
+            continue  
 
-        # Insert into `states` table
+        
         cur.execute('''
             INSERT OR IGNORE INTO states (state_code, state_name)
             VALUES (?, ?)
         ''', (state_code, state_name))
 
-        # Insert into `poverty_stats` table
+        
         cur.execute('''
             INSERT OR REPLACE INTO poverty_stats (
                 state_code, poverty_population, poverty_universe, median_income,
@@ -389,7 +389,7 @@ def plot_education_vs_case_rate(cur):
 # for=state:06 (California's FIPS code)
 
 def main():
-    db_name = "covid_db2.db"
+    db_name = "covid_db.db"
     covid_data = get_covid_data()
     get_poverty_data()
     poverty_dict = convert_poverty_to_dict()
