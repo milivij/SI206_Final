@@ -14,14 +14,17 @@ API_KEY = "2ccfec65f3d7e712756b848688b689eacd4e0282"
 ##Covid DB------------------------------------------##
 
 def get_covid_data():
+    covid_url = "https://disease.sh/v3/covid-19/states"
+
     try:
-        with open("covid_data.json", "r") as json_file:
-            data = json.load(json_file)
-            print("Loaded COVID data from local file.")
-            return data
+        response = requests.get(covid_url)
+        data = response.json()
+
+        return data  
     except:
-        print("FAILED")
+        print("FAILED to fetch live COVID data.")
         return None
+
 
 def get_poverty_data():
     url = "https://api.census.gov/data/2021/acs/acs1"
@@ -389,7 +392,7 @@ def plot_education_vs_case_rate(cur):
 # for=state:06 (California's FIPS code)
 
 def main():
-    db_name = "covid_db.db"
+    db_name = "covid_db2.db"
     covid_data = get_covid_data()
     get_poverty_data()
     poverty_dict = convert_poverty_to_dict()
