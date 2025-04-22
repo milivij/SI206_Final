@@ -1,28 +1,53 @@
 Alabama: 1659936 cases, 21138 deaths, $53913 median income, Republican
+Alaska: 301513 cases, 1485 deaths, $77845 median income, Republican
 Arizona: 2607545 cases, 34402 deaths, $69056 median income, Democratic
+Arkansas: 1062606 cases, 13246 deaths, $52528 median income, Republican
 California: 12711918 cases, 112443 deaths, $84907 median income, Democratic
 Colorado: 1874746 cases, 15552 deaths, $82254 median income, Democratic
+Connecticut: 983652 cases, 12354 deaths, $83771 median income, Democratic
+Delaware: 350706 cases, 3663 deaths, $71091 median income, Democratic
 Florida: 8048191 cases, 95206 deaths, $63062 median income, Republican
 Georgia: 3287483 cases, 44069 deaths, $66559 median income, Democratic
+Hawaii: 418369 cases, 2167 deaths, $84857 median income, Democratic
+Idaho: 525825 cases, 5482 deaths, $66474 median income, Republican
 Illinois: 4136659 cases, 42005 deaths, $72205 median income, Democratic
 Indiana: 2208419 cases, 28018 deaths, $62743 median income, Republican
+Iowa: 1058274 cases, 10797 deaths, $65600 median income, Republican
+Kansas: 946564 cases, 10229 deaths, $64124 median income, Republican
 Kentucky: 1808735 cases, 19183 deaths, $55573 median income, Republican
 Louisiana: 1684058 cases, 19270 deaths, $52087 median income, Republican
+Maine: 346182 cases, 3394 deaths, $64767 median income, Democratic
+Maryland: 1451442 cases, 17929 deaths, $90203 median income, Democratic
 Massachusetts: 2367542 cases, 25586 deaths, $89645 median income, Democratic
 Michigan: 3306221 cases, 44762 deaths, $63498 median income, Democratic
 Minnesota: 1900794 cases, 16458 deaths, $77720 median income, Democratic
+Mississippi: 1000415 cases, 13474 deaths, $48716 median income, Republican
 Missouri: 1780715 cases, 22778 deaths, $61847 median income, Republican
+Montana: 333758 cases, 3712 deaths, $63249 median income, Republican
+Nebraska: 574399 cases, 5063 deaths, $66817 median income, Republican
+Nevada: 923059 cases, 12485 deaths, $66274 median income, Democratic
+New Hampshire: 382013 cases, 3329 deaths, $88465 median income, Democratic
 New Jersey: 3295020 cases, 36873 deaths, $89296 median income, Democratic
+New Mexico: 725653 cases, 9623 deaths, $53992 median income, Democratic
 New York: 7587861 cases, 83374 deaths, $74314 median income, Democratic
 North Carolina: 3501404 cases, 29059 deaths, $61972 median income, Republican
+North Dakota: 309990 cases, 2513 deaths, $66519 median income, Republican
 Ohio: 3741277 cases, 43896 deaths, $62262 median income, Republican
+Oklahoma: 1306350 cases, 16157 deaths, $55826 median income, Republican
+Oregon: 992925 cases, 9764 deaths, $71562 median income, Democratic
 Pennsylvania: 3565499 cases, 51480 deaths, $68957 median income, Democratic
+Rhode Island: 443803 cases, 4166 deaths, $74008 median income, Democratic
 South Carolina: 1857853 cases, 20311 deaths, $59318 median income, Republican
+South Dakota: 282895 cases, 3231 deaths, $66143 median income, Republican
 Tennessee: 2729641 cases, 30729 deaths, $59695 median income, Republican
 Texas: 9190299 cases, 104793 deaths, $66963 median income, Republican
+Utah: 1137615 cases, 5719 deaths, $79449 median income, Republican
+Vermont: 155080 cases, 1139 deaths, $72431 median income, Democratic
 Virginia: 2315784 cases, 23748 deaths, $80963 median income, Democratic
 Washington: 2070848 cases, 17339 deaths, $84247 median income, Democratic
+West Virginia: 703856 cases, 8247 deaths, $51248 median income, Republican
 Wisconsin: 2043838 cases, 16758 deaths, $67125 median income, Democratic
+Wyoming: 196126 cases, 2126 deaths, $65204 median income, Republican
 
 
-Average COVID cases across states: 3651291.44
+Average COVID cases across states: 2163907.12

@@ -149,7 +149,7 @@ def insert_combined_data(covid_data, election_dict, cur, conn):
                     state, cases, deaths, population, tests, party_id
                 ) VALUES (?, ?, ?, ?, ?, ?)
             ''', (
-                state, entry['cases'], entry['deaths'], entry['population'], entry['tests'], party_id
+                state, entry['cases'], entry['deaths'], entry['population'], entry.get('tests', 0), party_id
             ))
             inserted_count += 1
 
@@ -183,10 +183,21 @@ def insert_split_poverty_data(cur, conn):
     with open("poverty_data.json", "r") as file:
         data = json.load(file)
 
-    for row in data[1:]:  
-        state_name = row[0]
+    # Get already inserted state codes
+    cur.execute("SELECT state_code FROM states")
+    inserted_codes = set(row[0] for row in cur.fetchall())
+
+    inserted_count = 0
+    for row in data[1:]:  # Skip header
+        if inserted_count >= 25:
+            break
+
         try:
-            state_code = int(row[7])  
+            state_code = int(row[7])  # FIPS code
+            if state_code in inserted_codes:
+                continue
+
+            state_name = row[0]
             poverty_population = int(row[1])
             poverty_universe = int(row[2])
             median_income = int(row[3])
@@ -194,15 +205,15 @@ def insert_split_poverty_data(cur, conn):
             hs_grads = int(row[5])
             bachelors = int(row[6])
         except ValueError:
-            continue  
+            continue
 
-        
+        # Insert into states
         cur.execute('''
             INSERT OR IGNORE INTO states (state_code, state_name)
             VALUES (?, ?)
         ''', (state_code, state_name))
 
-        
+        # Insert into poverty_stats
         cur.execute('''
             INSERT OR REPLACE INTO poverty_stats (
                 state_code, poverty_population, poverty_universe, median_income,
@@ -213,7 +224,11 @@ def insert_split_poverty_data(cur, conn):
             median_income, total_25plus, hs_grads, bachelors
         ))
 
+        inserted_codes.add(state_code)  # Track that it’s now inserted
+        inserted_count += 1
+
     conn.commit()
+
 
 def get_joined_data(cur):
     query = '''
@@ -269,10 +284,10 @@ def plot_death_rate_by_party(cur):
         death_rates.append(death_rate)
 
     plt.figure(figsize=(8, 6))
-    plt.bar(parties, death_rates, color='pink')
+    plt.barh(parties, death_rates, color='pink')
     plt.title("COVID Death Rate by Party (per 100k)")
-    plt.xlabel("Political Party")
-    plt.ylabel("Deaths per 100,000 People")
+    plt.ylabel("Political Party")  # Now on the y-axis
+    plt.xlabel("Deaths per 100,000 People")
     plt.tight_layout()
     plt.savefig("covid_death_rate_by_party.png")
     plt.close()
@@ -332,7 +347,7 @@ def plot_income_vs_case_rate(cur):
             incomes.append(income)
             case_rates.append((cases / pop) * 100000)
 
-    plt.scatter(incomes, case_rates, color='pink')
+    plt.scatter(incomes, case_rates, color='purple')
     plt.title("Median Income vs. COVID Case Rate (per 100k)")
     plt.xlabel("Median Income ($)")
     plt.ylabel("COVID Cases per 100,000 People")
@@ -364,7 +379,7 @@ def plot_education_vs_case_rate(cur):
         case_rate.append(covid_case_rate)
 
     plt.figure(figsize=(9, 6))
-    plt.scatter(bachelors_percent, case_rate, alpha=0.7, color='pink')
+    plt.scatter(bachelors_percent, case_rate, alpha=0.7, color='black')
     plt.title("% Bachelor's Degree vs. COVID Case Rate")
     plt.xlabel("% of Adults with Bachelor's Degree")
     plt.ylabel("COVID Cases per 100,000")
