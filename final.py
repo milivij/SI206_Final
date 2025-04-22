@@ -243,9 +243,8 @@ def write_results_to_file(joined_data):
             f.write(f"\n\nAverage COVID cases across states: {avg:.2f}")
 
 
-def plot_death_rate_by_party(db_path="covid_db.db"):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+def plot_death_rate_by_party(cur):
+    
     cur.execute('''
         SELECT parties.party_name, SUM(state_data.deaths), SUM(state_data.population)
         FROM state_data
@@ -253,7 +252,6 @@ def plot_death_rate_by_party(db_path="covid_db.db"):
         GROUP BY parties.party_name
     ''')
     data = cur.fetchall()
-    conn.close()
 
     parties = []
     death_rates = []
@@ -274,21 +272,19 @@ def plot_death_rate_by_party(db_path="covid_db.db"):
     plt.ylabel("Deaths per 100,000 People")
     plt.tight_layout()
     plt.savefig("covid_death_rate_by_party.png")
-    plt.show()
     plt.close()
 
 
 
-def plot_avg_case_rate_by_party(db_path="covid_db.db"):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+def plot_avg_case_rate_by_party(cur):
+    
     cur.execute('''
         SELECT parties.party_name, state_data.cases, state_data.population
         FROM state_data
         JOIN parties ON state_data.party_id = parties.party_id
     ''')
     data = cur.fetchall()
-    conn.close()
+    
 
     party_totals = {}
     for party, cases, pop in data:
@@ -311,7 +307,6 @@ def plot_avg_case_rate_by_party(db_path="covid_db.db"):
     plt.ylabel("Cases per 100,000 People")
     plt.tight_layout()
     plt.savefig("avg_case_rate_by_party.png")
-    plt.show()
     plt.close()
 
 
@@ -340,7 +335,6 @@ def plot_income_vs_case_rate(cur):
     plt.ylabel("COVID Cases per 100,000 People")
     plt.tight_layout()
     plt.savefig("income_vs_case_rate.png")
-    plt.show()
     plt.close()
 
 def plot_education_vs_case_rate(cur):
@@ -374,7 +368,6 @@ def plot_education_vs_case_rate(cur):
     plt.grid(True)
     plt.tight_layout()
     plt.savefig("education_vs_case_rate.png")
-    plt.show()
     plt.close()
 
 
@@ -396,11 +389,12 @@ def plot_education_vs_case_rate(cur):
 # for=state:06 (California's FIPS code)
 
 def main():
+    db_name = "covid_db.db"
     covid_data = get_covid_data()
     get_poverty_data()
     poverty_dict = convert_poverty_to_dict()
     election_dict = get_state_election_results()
-    cur, conn = set_up_covid_database("covid_db.db")
+    cur, conn = set_up_covid_database(db_name)
     create_parties_table(cur, conn) 
     create_combined_table(cur, conn)
     create_split_tables(cur, conn)
@@ -413,8 +407,8 @@ def main():
 
     joined_data = get_joined_data(cur)
     write_results_to_file(joined_data)
-    plot_death_rate_by_party()
-    plot_avg_case_rate_by_party()
+    plot_death_rate_by_party(cur)
+    plot_avg_case_rate_by_party(cur)
     plot_income_vs_case_rate(cur)
     plot_education_vs_case_rate(cur)
     
