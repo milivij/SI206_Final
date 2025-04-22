@@ -266,7 +266,7 @@ def plot_death_rate_by_party(cur):
         death_rates.append(death_rate)
 
     plt.figure(figsize=(8, 6))
-    plt.bar(parties, death_rates)
+    plt.bar(parties, death_rates, color='pink')
     plt.title("COVID Death Rate by Party (per 100k)")
     plt.xlabel("Political Party")
     plt.ylabel("Deaths per 100,000 People")
@@ -301,7 +301,7 @@ def plot_avg_case_rate_by_party(cur):
         case_rates.append(rate)
 
     plt.figure(figsize=(8, 6))
-    plt.bar(parties, case_rates)
+    plt.bar(parties, case_rates, color='pink')
     plt.title("Average COVID Case Rate by Party (per 100k)")
     plt.xlabel("Political Party")
     plt.ylabel("Cases per 100,000 People")
@@ -329,7 +329,7 @@ def plot_income_vs_case_rate(cur):
             incomes.append(income)
             case_rates.append((cases / pop) * 100000)
 
-    plt.scatter(incomes, case_rates)
+    plt.scatter(incomes, case_rates, color='pink')
     plt.title("Median Income vs. COVID Case Rate (per 100k)")
     plt.xlabel("Median Income ($)")
     plt.ylabel("COVID Cases per 100,000 People")
@@ -361,7 +361,7 @@ def plot_education_vs_case_rate(cur):
         case_rate.append(covid_case_rate)
 
     plt.figure(figsize=(9, 6))
-    plt.scatter(bachelors_percent, case_rate, alpha=0.7)
+    plt.scatter(bachelors_percent, case_rate, alpha=0.7, color='pink')
     plt.title("% Bachelor's Degree vs. COVID Case Rate")
     plt.xlabel("% of Adults with Bachelor's Degree")
     plt.ylabel("COVID Cases per 100,000")
@@ -389,7 +389,7 @@ def plot_education_vs_case_rate(cur):
 # for=state:06 (California's FIPS code)
 
 def main():
-    db_name = "covid_db.db"
+    db_name = "covid_db2.db"
     covid_data = get_covid_data()
     get_poverty_data()
     poverty_dict = convert_poverty_to_dict()
