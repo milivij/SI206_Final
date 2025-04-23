@@ -1,3 +1,4 @@
+=== Raw State Data ===
 Alabama: 1659936 cases, 21138 deaths, $53913 median income, Republican
 Alaska: 301513 cases, 1485 deaths, $77845 median income, Republican
 Arizona: 2607545 cases, 34402 deaths, $69056 median income, Democratic
@@ -49,5 +50,12 @@ West Virginia: 703856 cases, 8247 deaths, $51248 median income, Republican
 Wisconsin: 2043838 cases, 16758 deaths, $67125 median income, Democratic
 Wyoming: 196126 cases, 2126 deaths, $65204 median income, Republican
 
-
 Average COVID cases across states: 2163907.12
+
+=== Average Case Rate by Party (per 100k) ===
+Democratic: 32173.19 cases per 100,000
+Republican: 34181.49 cases per 100,000
+
+=== Death Rate by Party (per 100k) ===
+Democratic: 344.38 deaths per 100,000
+Republican: 381.99 deaths per 100,000

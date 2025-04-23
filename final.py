@@ -246,10 +246,12 @@ def get_joined_data(cur):
     cur.execute(query)
     return cur.fetchall()
 
-def write_results_to_file(joined_data):
+def write_results_to_file(joined_data, cur):
     total_cases = 0
     total_states = 0
+
     with open("results.txt", "w") as f:
+        f.write("=== Raw State Data ===\n")
         for row in joined_data:
             state, cases, deaths, income, party = row
             f.write(f"{state}: {cases} cases, {deaths} deaths, ${income} median income, {party}\n")
@@ -258,7 +260,44 @@ def write_results_to_file(joined_data):
 
         if total_states > 0:
             avg = total_cases / total_states
-            f.write(f"\n\nAverage COVID cases across states: {avg:.2f}")
+            f.write(f"\nAverage COVID cases across states: {avg:.2f}\n")
+
+        f.write("\n=== Average Case Rate by Party (per 100k) ===\n")
+        cur.execute('''
+            SELECT parties.party_name, state_data.cases, state_data.population
+            FROM state_data
+            JOIN parties ON state_data.party_id = parties.party_id
+        ''')
+        data = cur.fetchall()
+
+        party_totals = {}
+        for party, cases, pop in data:
+            if party not in party_totals:
+                party_totals[party] = {"cases": 0, "pop": 0}
+            party_totals[party]["cases"] += cases
+            party_totals[party]["pop"] += pop
+
+        for party, values in party_totals.items():
+            rate = (values["cases"] / values["pop"]) * 100000
+            f.write(f"{party}: {rate:.2f} cases per 100,000\n")
+
+        f.write("\n=== Death Rate by Party (per 100k) ===\n")
+        cur.execute('''
+            SELECT parties.party_name, SUM(state_data.deaths), SUM(state_data.population)
+            FROM state_data
+            JOIN parties ON state_data.party_id = parties.party_id
+            GROUP BY parties.party_name
+        ''')
+        data = cur.fetchall()
+
+        for row in data:
+            party = row[0]
+            total_deaths = row[1]
+            total_population = row[2]
+            if total_population > 0:
+                death_rate = (total_deaths / total_population) * 100000
+                f.write(f"{party}: {death_rate:.2f} deaths per 100,000\n")
+
 
 
 def plot_death_rate_by_party(cur):
@@ -424,7 +463,7 @@ def main():
         print("Failed to load COVID data.")
 
     joined_data = get_joined_data(cur)
-    write_results_to_file(joined_data)
+    write_results_to_file(joined_data, cur)
     plot_death_rate_by_party(cur)
     plot_avg_case_rate_by_party(cur)
     plot_income_vs_case_rate(cur)
